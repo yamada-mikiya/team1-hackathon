@@ -55,6 +55,7 @@ func (s *authService) SignUp(ctx context.Context, req models.SignUpRequest) (mod
 		Name:         req.Name,
 		Email:        req.Email,
 		PasswordHash: string(hashedPassword),
+		Affiliation:  req.Affiliation,
 	}
 
 	if err := s.userRepo.CreateUser(ctx, newUser); err != nil {

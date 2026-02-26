@@ -45,11 +45,14 @@ func (r *userRepository) GetUserByEmail(ctx context.Context, email string) (*mod
 // GetUserByID はユーザーIDからユーザーを取得します
 func (r *userRepository) GetUserByID(ctx context.Context, userID int) (*models.User, error) {
 	var user models.User
-	if err := r.db.WithContext(ctx).Where("id = ?", userID).First(&user).Error; err != nil {
-		if errors.Is(err, gorm.ErrRecordNotFound) {
-			return nil, err
-		}
-		return nil, err
+	result := r.db.WithContext(ctx).Where("id = ?", userID).Find(&user)
+
+	if result.Error != nil {
+		return nil, result.Error
+	}
+
+	if result.RowsAffected == 0 {
+		return nil, nil
 	}
 	return &user, nil
 }

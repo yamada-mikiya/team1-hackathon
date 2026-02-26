@@ -1,9 +1,9 @@
 'use client';
 
-import { LogIn, LogOut } from 'lucide-react';
+import { LogIn, LogOut, User } from 'lucide-react';
 import Link from 'next/link';
 import { useEffect } from 'react';
-import { Avatar, AvatarFallback } from '@/components/ui/avatar';
+import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Button } from '@/components/ui/button';
 import {
   DropdownMenu,
@@ -29,6 +29,7 @@ export function AuthButton() {
         <DropdownMenuTrigger asChild>
           <Button variant="ghost" className="relative h-10 w-10 rounded-full">
             <Avatar className="h-10 w-10">
+              <AvatarImage src={user.icon_url || undefined} alt={user.name} />
               <AvatarFallback className="bg-primary text-primary-foreground">
                 {user.name?.slice(0, 2).toUpperCase() || 'U'}
               </AvatarFallback>
@@ -43,6 +44,12 @@ export function AuthButton() {
             </div>
           </DropdownMenuLabel>
           <DropdownMenuSeparator />
+          <DropdownMenuItem asChild className="cursor-pointer">
+            <Link href={`/users/${user.id}`}>
+              <User className="mr-2 h-4 w-4" />
+              <span>プロフィール</span>
+            </Link>
+          </DropdownMenuItem>
           <DropdownMenuItem onClick={logout} className="cursor-pointer">
             <LogOut className="mr-2 h-4 w-4" />
             <span>ログアウト</span>

@@ -10,6 +10,8 @@ import (
 type ArticleRepository interface {
 	FindAll(filters ArticleFilters, page, limit int) ([]models.Article, int64, error)
 	FindBySlug(slug string, isAuthenticated bool) (*models.Article, error)
+	FindByAuthorID(authorID int, isAuthenticated bool) ([]models.Article, error)
+	Create(article *models.Article) error
 }
 
 type ArticleFilters struct {
@@ -98,4 +100,30 @@ func (r *articleRepository) FindBySlug(slug string, isAuthenticated bool) (*mode
 		// draft等のその他のステータスは見つからない扱い（404）
 		return nil, gorm.ErrRecordNotFound
 	}
+}
+
+// FindByAuthorID は指定した著者の記事を取得します
+func (r *articleRepository) FindByAuthorID(authorID int, isAuthenticated bool) ([]models.Article, error) {
+	var articles []models.Article
+
+	query := r.db.Preload("Author").Preload("Tags").Where("author_id = ?", authorID)
+
+	// ゲストの場合はpublicのみ
+	if !isAuthenticated {
+		query = query.Where("status = ?", "public")
+	} else {
+		// ログイン済みの場合はpublicとinternalを取得
+		query = query.Where("status IN ?", []string{"public", "internal"})
+	}
+
+	if err := query.Order("created_at DESC").Find(&articles).Error; err != nil {
+		return nil, err
+	}
+
+	return articles, nil
+}
+
+// Create は新しい記事を作成します
+func (r *articleRepository) Create(article *models.Article) error {
+	return r.db.Create(article).Error
 }

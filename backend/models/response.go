@@ -17,6 +17,7 @@ type ArticleResponse struct {
 	Title        string         `json:"title" example:"Go言語でのAPI開発入門"`
 	ArticleType  string         `json:"article_type" example:"markdown" enums:"markdown,external"`
 	Content      *string        `json:"content,omitempty" example:"記事の本文です..."`
+	Description  *string        `json:"description,omitempty" example:"記事の要約や説明文です"`
 	ExternalURL  *string        `json:"external_url,omitempty" example:"https://example.com/article"`
 	ThumbnailURL *string        `json:"thumbnail_url,omitempty" example:"https://example.com/thumbnail.jpg"`
 	Slug         string         `json:"slug" example:"go-api-development"`
@@ -56,3 +57,14 @@ type AuthResponse struct {
 	Token string       `json:"token" example:"eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9..."`
 	User  UserResponse `json:"user"`
 } // @name AuthResponse
+
+// UserDetailResponse は公開用のユーザー詳細情報（メアドなし）
+type UserDetailResponse struct {
+	ID           int               `json:"id" example:"1"`
+	Name         string            `json:"name" example:"山田太郎"`
+	Affiliation  *string           `json:"affiliation,omitempty" example:"Dev"`
+	IconURL      *string           `json:"icon_url,omitempty" example:"https://example.com/icon.jpg"`
+	PortfolioKey *string           `json:"portfolio_key,omitempty" example:"abc123xyz"`
+	CreatedAt    time.Time         `json:"created_at" example:"2026-01-01T12:00:00Z"`
+	Articles     []ArticleResponse `json:"articles"`
+} // @name UserDetailResponse

@@ -72,6 +72,72 @@ func (ac *ArticleController) GetArticles(c echo.Context) error {
 	return c.JSON(http.StatusOK, response)
 }
 
+// CreateExternalArticle は外部記事URLからOGP情報を取得して記事を作成します
+// @Summary      外部記事を作成
+// @Description  外部サイト（Zenn、Noteなど）の記事URLを指定して、OGP情報を取得し記事として登録します。
+// @Tags         記事 (Articles)
+// @Accept       json
+// @Produce      json
+// @Param        payload body models.CreateExternalArticleRequest true "外部記事作成リクエスト"
+// @Success      201 {object} models.ArticleResponse "作成された記事"
+// @Failure      400 {object} models.ErrorResponse "リクエストが不正です"
+// @Failure      401 {object} models.ErrorResponse "認証が必要です"
+// @Failure      500 {object} models.ErrorResponse "サーバー内部でエラーが発生しました"
+// @Router       /api/articles/external [post]
+func (ac *ArticleController) CreateExternalArticle(c echo.Context) error {
+	// 認証チェック
+	userID := c.Get("user_id")
+	if userID == nil {
+		return c.JSON(http.StatusUnauthorized, models.ErrorResponse{
+			Error: "認証が必要です",
+		})
+	}
+
+	userIDInt, ok := userID.(int)
+	if !ok {
+		return c.JSON(http.StatusInternalServerError, models.ErrorResponse{
+			Error: "ユーザーIDの取得に失敗しました",
+		})
+	}
+
+	// リクエストボディをパース
+	var req models.CreateExternalArticleRequest
+	if err := c.Bind(&req); err != nil {
+		return c.JSON(http.StatusBadRequest, models.ErrorResponse{
+			Error:   "リクエストの形式が不正です",
+			Message: err.Error(),
+		})
+	}
+
+	// バリデーション
+	if req.URL == "" {
+		return c.JSON(http.StatusBadRequest, models.ErrorResponse{
+			Error: "URLは必須です",
+		})
+	}
+
+	if req.Department == "" {
+		return c.JSON(http.StatusBadRequest, models.ErrorResponse{
+			Error: "部署は必須です",
+		})
+	}
+
+	if req.Status == "" {
+		req.Status = "public" // デフォルトはpublic
+	}
+
+	// 外部記事を作成
+	article, err := ac.service.CreateExternalArticle(c.Request().Context(), userIDInt, req.URL, req.Department, req.Status)
+	if err != nil {
+		return c.JSON(http.StatusInternalServerError, models.ErrorResponse{
+			Error:   "外部記事の作成に失敗しました",
+			Message: err.Error(),
+		})
+	}
+
+	return c.JSON(http.StatusCreated, article)
+}
+
 // GetArticleBySlug はslugを指定して記事を取得します
 // @Summary      記事詳細を取得
 // @Description  指定されたslugのブログ記事の詳細を取得します。内部公開記事の場合はログインが必要です。

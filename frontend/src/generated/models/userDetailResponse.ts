@@ -6,12 +6,14 @@
 記事の取得、閲覧などの機能を提供します。
  * OpenAPI spec version: 1.0
  */
-import type { SignUpRequestAffiliation } from './signUpRequestAffiliation';
+import type { ArticleResponse } from './articleResponse';
 
-export interface SignUpRequest {
-  affiliation?: SignUpRequestAffiliation;
-  email: string;
-  name: string;
-  /** @minLength 8 */
-  password: string;
+export interface UserDetailResponse {
+  affiliation?: string;
+  articles?: ArticleResponse[];
+  created_at?: string;
+  icon_url?: string;
+  id?: number;
+  name?: string;
+  portfolio_key?: string;
 }

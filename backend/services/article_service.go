@@ -1,23 +1,32 @@
 package services
 
 import (
+	"context"
+	"crypto/sha256"
+	"encoding/hex"
+	"errors"
+
 	"github.com/yamada-mikiya/team1-hackathon/models"
 	"github.com/yamada-mikiya/team1-hackathon/repositories"
-	"errors"
 )
 
 type ArticleService interface {
 	GetArticles(filters repositories.ArticleFilters, page, limit int) (*models.ArticleListResponse, error)
 	GetArticleBySlug(slug string, isAuthenticated bool) (*models.ArticleResponse, error)
+	CreateExternalArticle(ctx context.Context, userID int, url, department, status string) (*models.ArticleResponse, error)
 }
 
 
 type articleService struct {
-	repo repositories.ArticleRepository
+	repo       repositories.ArticleRepository
+	ogpService OGPService
 }
 
 func NewArticleService(repo repositories.ArticleRepository) ArticleService {
-	return &articleService{repo: repo}
+	return &articleService{
+		repo:       repo,
+		ogpService: NewOGPService(),
+	}
 }
 
 // GetArticles は記事一覧を取得します
@@ -67,6 +76,45 @@ func (s *articleService) GetArticleBySlug(slug string, isAuthenticated bool) (*m
 	return &res, nil
 }
 
+// CreateExternalArticle は外部記事URLからOGP情報を取得して記事を作成します
+func (s *articleService) CreateExternalArticle(ctx context.Context, userID int, url, department, status string) (*models.ArticleResponse, error) {
+	// OGP情報を取得
+	ogp, err := s.ogpService.FetchOGP(ctx, url)
+	if err != nil {
+		return nil, err
+	}
+
+	// slugを生成（タイトルから簡易的に生成）
+	slug := generateSlugFromURL(url)
+
+	// 記事モデルを作成
+	article := &models.Article{
+		AuthorID:     userID,
+		ArticleType:  "external",
+		Title:        ogp.Title,
+		Description:  &ogp.Description,
+		ExternalURL:  &url,
+		ThumbnailURL: &ogp.Image,
+		Slug:         slug,
+		Department:   department,
+		Status:       status,
+	}
+
+	// データベースに保存
+	if err := s.repo.Create(article); err != nil {
+		return nil, err
+	}
+
+	// 保存した記事を取得（Authorを含めるため）
+	savedArticle, err := s.repo.FindBySlug(article.Slug, true)
+	if err != nil {
+		return nil, err
+	}
+
+	res := s.convertArticleToResponse(savedArticle)
+	return &res, nil
+}
+
 // 共通の変換ロジック (Helper Method)
 // DBモデル(*models.Article)を受け取り、レスポンスモデル(models.ArticleResponse)を返す
 func (s *articleService) convertArticleToResponse(article *models.Article) models.ArticleResponse {
@@ -87,6 +135,7 @@ func (s *articleService) convertArticleToResponse(article *models.Article) model
 		Title:        article.Title,
 		ArticleType:  article.ArticleType,
 		Content:      article.Content,
+		Description:  article.Description,
 		ExternalURL:  article.ExternalURL,
 		ThumbnailURL: article.ThumbnailURL,
 		Slug:         article.Slug,
@@ -96,4 +145,13 @@ func (s *articleService) convertArticleToResponse(article *models.Article) model
 		CreatedAt:    article.CreatedAt,
 		UpdatedAt:    article.UpdatedAt,
 	}
+}
+
+// generateSlugFromURL はURLからユニークなslugを生成します
+func generateSlugFromURL(url string) string {
+	// URLのハッシュを生成（短く、ユニークに）
+	hash := sha256.Sum256([]byte(url))
+	hashStr := hex.EncodeToString(hash[:])
+	// 最初の16文字を使用
+	return "external-" + hashStr[:16]
 }

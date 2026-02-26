@@ -11,18 +11,22 @@ import type {
   DataTag,
   DefinedInitialDataOptions,
   DefinedUseQueryResult,
+  MutationFunction,
   QueryClient,
   QueryFunction,
   QueryKey,
   UndefinedInitialDataOptions,
+  UseMutationOptions,
+  UseMutationResult,
   UseQueryOptions,
   UseQueryResult,
 } from '@tanstack/react-query';
-import { useQuery } from '@tanstack/react-query';
+import { useMutation, useQuery } from '@tanstack/react-query';
 import { customInstance } from '../../../lib/api-client';
 import type {
   ArticleListResponse,
   ArticleResponse,
+  CreateExternalArticleRequest,
   ErrorResponse,
   GetApiArticlesParams,
 } from '../../models';
@@ -150,6 +154,93 @@ export function useGetApiArticles<
   return query;
 }
 
+/**
+ * 外部サイト（Zenn、Noteなど）の記事URLを指定して、OGP情報を取得し記事として登録します。
+ * @summary 外部記事を作成
+ */
+export const postApiArticlesExternal = (
+  createExternalArticleRequest: CreateExternalArticleRequest,
+  options?: SecondParameter<typeof customInstance>,
+  signal?: AbortSignal,
+) => {
+  return customInstance<ArticleResponse>(
+    {
+      url: `/api/articles/external`,
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      data: createExternalArticleRequest,
+      signal,
+    },
+    options,
+  );
+};
+
+export const getPostApiArticlesExternalMutationOptions = <
+  TError = ErrorResponse,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof postApiArticlesExternal>>,
+    TError,
+    { data: CreateExternalArticleRequest },
+    TContext
+  >;
+  request?: SecondParameter<typeof customInstance>;
+}): UseMutationOptions<
+  Awaited<ReturnType<typeof postApiArticlesExternal>>,
+  TError,
+  { data: CreateExternalArticleRequest },
+  TContext
+> => {
+  const mutationKey = ['postApiArticlesExternal'];
+  const { mutation: mutationOptions, request: requestOptions } = options
+    ? options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey
+      ? options
+      : { ...options, mutation: { ...options.mutation, mutationKey } }
+    : { mutation: { mutationKey }, request: undefined };
+
+  const mutationFn: MutationFunction<
+    Awaited<ReturnType<typeof postApiArticlesExternal>>,
+    { data: CreateExternalArticleRequest }
+  > = (props) => {
+    const { data } = props ?? {};
+
+    return postApiArticlesExternal(data, requestOptions);
+  };
+
+  return { mutationFn, ...mutationOptions };
+};
+
+export type PostApiArticlesExternalMutationResult = NonNullable<
+  Awaited<ReturnType<typeof postApiArticlesExternal>>
+>;
+export type PostApiArticlesExternalMutationBody = CreateExternalArticleRequest;
+export type PostApiArticlesExternalMutationError = ErrorResponse;
+
+/**
+ * @summary 外部記事を作成
+ */
+export const usePostApiArticlesExternal = <TError = ErrorResponse, TContext = unknown>(
+  options?: {
+    mutation?: UseMutationOptions<
+      Awaited<ReturnType<typeof postApiArticlesExternal>>,
+      TError,
+      { data: CreateExternalArticleRequest },
+      TContext
+    >;
+    request?: SecondParameter<typeof customInstance>;
+  },
+  queryClient?: QueryClient,
+): UseMutationResult<
+  Awaited<ReturnType<typeof postApiArticlesExternal>>,
+  TError,
+  { data: CreateExternalArticleRequest },
+  TContext
+> => {
+  const mutationOptions = getPostApiArticlesExternalMutationOptions(options);
+
+  return useMutation(mutationOptions, queryClient);
+};
 /**
  * 指定されたslugのブログ記事の詳細を取得します。内部公開記事の場合はログインが必要です。
  * @summary 記事詳細を取得

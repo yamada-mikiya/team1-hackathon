@@ -42,6 +42,9 @@ definitions:
         - Ops
         example: Dev
         type: string
+      description:
+        example: 記事の要約や説明文です
+        type: string
       external_url:
         example: https://example.com/article
         type: string
@@ -58,6 +61,14 @@ definitions:
         - public
         example: public
         type: string
+      tags:
+        example:
+        - Go
+        - Backend
+        - Echo
+        items:
+          type: string
+        type: array
       thumbnail_url:
         example: https://example.com/thumbnail.jpg
         type: string
@@ -104,6 +115,30 @@ definitions:
         example: 山田太郎
         type: string
     type: object
+  CreateExternalArticleRequest:
+    properties:
+      department:
+        enum:
+        - 開発
+        - マーケティング
+        - 組織管理
+        example: 開発
+        type: string
+      status:
+        enum:
+        - draft
+        - internal
+        - public
+        example: public
+        type: string
+      url:
+        example: https://zenn.dev/example/articles/sample
+        type: string
+    required:
+    - department
+    - status
+    - url
+    type: object
   ErrorResponse:
     properties:
       error:
@@ -115,6 +150,13 @@ definitions:
     type: object
   SignUpRequest:
     properties:
+      affiliation:
+        enum:
+        - 開発
+        - マーケティング
+        - 組織管理
+        example: 開発
+        type: string
       email:
         example: user@example.com
         type: string
@@ -129,6 +171,31 @@ definitions:
     - email
     - name
     - password
+    type: object
+  UserDetailResponse:
+    properties:
+      affiliation:
+        example: Dev
+        type: string
+      articles:
+        items:
+          $ref: '#/definitions/ArticleResponse'
+        type: array
+      created_at:
+        example: "2026-01-01T12:00:00Z"
+        type: string
+      icon_url:
+        example: https://example.com/icon.jpg
+        type: string
+      id:
+        example: 1
+        type: integer
+      name:
+        example: 山田太郎
+        type: string
+      portfolio_key:
+        example: abc123xyz
+        type: string
     type: object
   UserResponse:
     properties:
@@ -241,6 +308,40 @@ paths:
       summary: 記事詳細を取得
       tags:
       - 記事 (Articles)
+  /api/articles/external:
+    post:
+      consumes:
+      - application/json
+      description: 外部サイト（Zenn、Noteなど）の記事URLを指定して、OGP情報を取得し記事として登録します。
+      parameters:
+      - description: 外部記事作成リクエスト
+        in: body
+        name: payload
+        required: true
+        schema:
+          $ref: '#/definitions/CreateExternalArticleRequest'
+      produces:
+      - application/json
+      responses:
+        "201":
+          description: 作成された記事
+          schema:
+            $ref: '#/definitions/ArticleResponse'
+        "400":
+          description: リクエストが不正です
+          schema:
+            $ref: '#/definitions/ErrorResponse'
+        "401":
+          description: 認証が必要です
+          schema:
+            $ref: '#/definitions/ErrorResponse'
+        "500":
+          description: サーバー内部でエラーが発生しました
+          schema:
+            $ref: '#/definitions/ErrorResponse'
+      summary: 外部記事を作成
+      tags:
+      - 記事 (Articles)
   /api/auth/login:
     post:
       consumes:
@@ -273,6 +374,38 @@ paths:
           schema:
             $ref: '#/definitions/ErrorResponse'
       summary: ログイン (Log In)
+      tags:
+      - 認証 (Auth)
+  /api/auth/logout:
+    post:
+      description: クッキーを削除してログアウトします。
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: ログアウト成功
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+      summary: ログアウト (Logout)
+      tags:
+      - 認証 (Auth)
+  /api/auth/me:
+    get:
+      description: Cookieからトークンを読み取り、現在ログイン中のユーザー情報を返します。
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: ユーザー情報
+          schema:
+            $ref: '#/definitions/UserResponse'
+        "401":
+          description: 認証されていません
+          schema:
+            $ref: '#/definitions/ErrorResponse'
+      summary: 現在のユーザー情報を取得
       tags:
       - 認証 (Auth)
   /api/auth/signup:
@@ -309,6 +442,43 @@ paths:
       summary: 新規ユーザー登録 (Sign Up)
       tags:
       - 認証 (Auth)
+  /users/{id}:
+    get:
+      consumes:
+      - application/json
+      description: 指定されたIDのユーザー公開プロフィール（名前、所属、アイコン、記事一覧）を取得します。未認証でもアクセス可能ですが、外部公開記事のみ表示されます。
+      parameters:
+      - description: User ID
+        in: path
+        name: id
+        required: true
+        type: integer
+      - description: ポートフォリオキー（内部公開記事も表示する場合に必要）
+        in: query
+        name: portfolio_key
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/UserDetailResponse'
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/ErrorResponse'
+        "404":
+          description: Not Found
+          schema:
+            $ref: '#/definitions/ErrorResponse'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/ErrorResponse'
+      summary: ユーザー詳細取得
+      tags:
+      - Users
 securityDefinitions:
   Bearer:
     description: '認証トークンを''Bearer ''に続けて入力してください。 (例: Bearer {JWTトークン})'

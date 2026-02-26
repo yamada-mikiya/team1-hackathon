@@ -59,6 +59,15 @@ func (c *AuthController) SignUpHandler(ctx echo.Context) error {
 		})
 	}
 
+	if req.Affiliation != nil {
+		affiliation := *req.Affiliation
+		if affiliation != "開発" && affiliation != "マーケティング" && affiliation != "組織管理" {
+			return ctx.JSON(http.StatusBadRequest, models.ErrorResponse{
+				Error: "所属は開発、マーケティング、組織管理のいずれかである必要があります",
+			})
+		}
+	}
+
 	userRes, tokenString, err := c.service.SignUp(ctx.Request().Context(), req)
 	if err != nil {
 		statusCode := http.StatusInternalServerError
@@ -73,15 +82,20 @@ func (c *AuthController) SignUpHandler(ctx echo.Context) error {
 
 	// CookieにJWTトークンを設定
 	isProduction := c.config.Server.Environment == "production"
+	sameSite := http.SameSiteLaxMode
+	if isProduction {
+		// 本番環境ではクロスサイトリクエストのためSameSite=Noneが必要
+		sameSite = http.SameSiteNoneMode
+	}
 	cookie := &http.Cookie{
-		Name:     "token",
-		Value:    tokenString,
-		Path:     "/",
-		Domain:   c.config.Server.CookieDomain, // クロスドメインでのクッキー共有用
-		MaxAge:   259200,                       // 72時間
+		Name:  "token",
+		Value: tokenString,
+		Path:  "/",
+		// Domainは設定しない（異なるドメイン間ではクッキー共有不可のため）
+		MaxAge:   259200, // 72時間
 		HttpOnly: true,
-		Secure:   isProduction, // 本番環境ではtrue
-		SameSite: http.SameSiteLaxMode,
+		Secure:   isProduction, // 本番環境ではtrue（HTTPS必須）
+		SameSite: sameSite,     // 本番: None、開発: Lax
 	}
 	ctx.SetCookie(cookie)
 
@@ -135,15 +149,20 @@ func (c *AuthController) LogInHandler(ctx echo.Context) error {
 
 	// CookieにJWTトークンを設定
 	isProduction := c.config.Server.Environment == "production"
+	sameSite := http.SameSiteLaxMode
+	if isProduction {
+		// 本番環境ではクロスサイトリクエストのためSameSite=Noneが必要
+		sameSite = http.SameSiteNoneMode
+	}
 	cookie := &http.Cookie{
-		Name:     "token",
-		Value:    tokenString,
-		Path:     "/",
-		Domain:   c.config.Server.CookieDomain, // クロスドメインでのクッキー共有用
-		MaxAge:   259200,                       // 72時間
+		Name:  "token",
+		Value: tokenString,
+		Path:  "/",
+		// Domainは設定しない（異なるドメイン間ではクッキー共有不可のため）
+		MaxAge:   259200, // 72時間
 		HttpOnly: true,
-		Secure:   isProduction, // 本番環境ではtrue
-		SameSite: http.SameSiteLaxMode,
+		Secure:   isProduction, // 本番環境ではtrue（HTTPS必須）
+		SameSite: sameSite,     // 本番: None、開発: Lax
 	}
 	ctx.SetCookie(cookie)
 
@@ -188,4 +207,35 @@ func (c *AuthController) GetMeHandler(ctx echo.Context) error {
 	}
 
 	return ctx.JSON(http.StatusOK, userResponse)
+}
+
+// LogoutHandler はユーザーをログアウトしてクッキーを削除します
+// @Summary      ログアウト (Logout)
+// @Description  クッキーを削除してログアウトします。
+// @Tags         認証 (Auth)
+// @Produce      json
+// @Success      200 {object} map[string]string "ログアウト成功"
+// @Router       /api/auth/logout [post]
+func (c *AuthController) LogoutHandler(ctx echo.Context) error {
+	isProduction := c.config.Server.Environment == "production"
+	sameSite := http.SameSiteLaxMode
+	if isProduction {
+		sameSite = http.SameSiteNoneMode
+	}
+
+	// クッキーを削除（MaxAgeを-1に設定）
+	cookie := &http.Cookie{
+		Name:     "token",
+		Value:    "",
+		Path:     "/",
+		MaxAge:   -1, // クッキーを削除
+		HttpOnly: true,
+		Secure:   isProduction,
+		SameSite: sameSite,
+	}
+	ctx.SetCookie(cookie)
+
+	return ctx.JSON(http.StatusOK, map[string]string{
+		"message": "ログアウトしました",
+	})
 }

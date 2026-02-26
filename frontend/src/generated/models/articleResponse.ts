@@ -17,10 +17,12 @@ export interface ArticleResponse {
   content?: string;
   created_at?: string;
   department?: ArticleResponseDepartment;
+  description?: string;
   external_url?: string;
   id?: number;
   slug?: string;
   status?: ArticleResponseStatus;
+  tags?: string[];
   thumbnail_url?: string;
   title?: string;
   updated_at?: string;

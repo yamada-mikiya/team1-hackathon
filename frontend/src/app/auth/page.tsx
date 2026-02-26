@@ -6,6 +6,7 @@ import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import type { SignUpRequestAffiliation } from '@/generated/models';
 import { useAuth } from '@/hooks/useAuth';
 
 export default function AuthPage() {
@@ -23,6 +24,7 @@ export default function AuthPage() {
   const [signupEmail, setSignupEmail] = useState('');
   const [signupPassword, setSignupPassword] = useState('');
   const [signupConfirmPassword, setSignupConfirmPassword] = useState('');
+  const [signupAffiliation, setSignupAffiliation] = useState<SignUpRequestAffiliation | ''>('');
   const [signupError, setSignupError] = useState('');
   const [signupLoading, setSignupLoading] = useState(false);
 
@@ -58,7 +60,7 @@ export default function AuthPage() {
     setSignupLoading(true);
 
     try {
-      await signup(signupEmail, signupPassword, signupName);
+      await signup(signupEmail, signupPassword, signupName, signupAffiliation || undefined);
       router.push('/');
     } catch (error) {
       setSignupError(error instanceof Error ? error.message : 'サインアップに失敗しました');
@@ -134,6 +136,24 @@ export default function AuthPage() {
                     onChange={(e) => setSignupName(e.target.value)}
                     required
                   />
+                </div>
+                <div className="space-y-2">
+                  <label htmlFor="signup-affiliation" className="text-sm font-medium">
+                    所属（任意）
+                  </label>
+                  <select
+                    id="signup-affiliation"
+                    value={signupAffiliation}
+                    onChange={(e) =>
+                      setSignupAffiliation(e.target.value as SignUpRequestAffiliation | '')
+                    }
+                    className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
+                  >
+                    <option value="">選択してください</option>
+                    <option value="開発">開発</option>
+                    <option value="マーケティング">マーケティング</option>
+                    <option value="組織管理">組織管理</option>
+                  </select>
                 </div>
                 <div className="space-y-2">
                   <label htmlFor="signup-email" className="text-sm font-medium">

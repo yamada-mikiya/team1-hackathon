@@ -6,12 +6,10 @@
 記事の取得、閲覧などの機能を提供します。
  * OpenAPI spec version: 1.0
  */
-import type { SignUpRequestAffiliation } from './signUpRequestAffiliation';
 
-export interface SignUpRequest {
-  affiliation?: SignUpRequestAffiliation;
-  email: string;
-  name: string;
-  /** @minLength 8 */
-  password: string;
-}
+export type GetUsersIdParams = {
+  /**
+   * ポートフォリオキー（内部公開記事も表示する場合に必要）
+   */
+  portfolio_key?: string;
+};

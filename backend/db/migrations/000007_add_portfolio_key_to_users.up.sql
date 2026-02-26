@@ -1,0 +1,1 @@
+ALTER TABLE users ADD COLUMN portfolio_key VARCHAR(255) UNIQUE NOT NULL DEFAULT gen_random_uuid()::TEXT;

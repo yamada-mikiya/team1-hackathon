@@ -5,7 +5,6 @@ import Image from 'next/image';
 import Link from 'next/link';
 import { useState } from 'react';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
-import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardFooter, CardHeader } from '@/components/ui/card';
 import {
@@ -25,9 +24,13 @@ import { useArticles } from '@/hooks/useArticles';
 import { useAuth } from '@/hooks/useAuth';
 
 const DEPARTMENTS = [
-  { id: 1, label: 'マーケティング', value: 'MKT' as GetApiArticlesDepartment },
-  { id: 2, label: '開発', value: 'Dev' as GetApiArticlesDepartment },
-  { id: 3, label: '組織管理', value: 'Ops' as GetApiArticlesDepartment },
+  {
+    id: 1,
+    label: 'マーケティング',
+    value: 'マーケティング' as GetApiArticlesDepartment,
+  },
+  { id: 2, label: '開発', value: '開発' as GetApiArticlesDepartment },
+  { id: 3, label: '組織管理', value: '組織管理' as GetApiArticlesDepartment },
 ];
 
 const STATUS_OPTIONS = [
@@ -38,7 +41,9 @@ const STATUS_OPTIONS = [
 
 export default function Home() {
   const [searchQuery, setSearchQuery] = useState('');
-  const [activeTab, setActiveTab] = useState<GetApiArticlesDepartment>('MKT');
+  const [activeTab, setActiveTab] = useState<GetApiArticlesDepartment>(
+    '開発' as GetApiArticlesDepartment,
+  );
   const [statusFilter, setStatusFilter] = useState<GetApiArticlesStatus>('all');
   const { isAuthenticated } = useAuth();
 
@@ -78,9 +83,9 @@ export default function Home() {
       </div>
 
       <div className="container mx-auto px-4 py-12 max-w-[1600px]">
-        {/* Header Section */}
+        {/* Filter Section */}
         <div className="flex flex-col md:flex-row justify-between items-center mb-8 gap-4">
-          <h1 className="text-3xl font-bold tracking-tight text-slate-800">えーブログ</h1>
+          <div className="w-full md:w-auto" />
           <div className="flex items-center gap-3 w-full md:w-auto">
             {/* ログイン済みの場合のみステータスフィルターを表示 */}
             {isAuthenticated && (
@@ -119,7 +124,7 @@ export default function Home() {
 
         {/* Tabs Section */}
         <Tabs
-          defaultValue="MKT"
+          defaultValue="開発"
           className="w-full"
           onValueChange={(value) => setActiveTab(value as GetApiArticlesDepartment)}
         >
@@ -146,7 +151,7 @@ export default function Home() {
                   Error loading articles: {error.message}
                 </div>
               ) : (
-                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
+                <div className="grid grid-cols-2 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4 md:gap-6">
                   {filteredArticles.length > 0 ? (
                     filteredArticles.map((article) => (
                       <ArticleCard key={article.id} article={article} formatDate={formatDate} />
@@ -173,58 +178,71 @@ function ArticleCard({
   article: ArticleResponse;
   formatDate: (date?: string) => string;
 }) {
+  // 外部記事の場合は外部URLへ、内部記事の場合は詳細ページへ
+  const isExternal = article.article_type === 'external' && article.external_url;
+  const href = isExternal ? article.external_url! : `/detail/${article.slug}`;
+
+  const handleCardClick = () => {
+    if (isExternal && article.external_url) {
+      window.open(article.external_url, '_blank', 'noopener,noreferrer');
+    } else {
+      window.location.href = href;
+    }
+  };
+
   return (
-    <Link href={`/detail/${article.slug}`}>
-      <Card className="group hover:shadow-xl transition-all duration-300 border-none shadow-sm bg-white flex flex-col h-full overflow-hidden cursor-pointer">
-        {/* Thumbnail Image */}
-        <div className="relative w-full aspect-video overflow-hidden bg-slate-100">
-          {article.thumbnail_url ? (
-            <Image
-              src={article.thumbnail_url}
-              alt={article.title || 'Article thumbnail'}
-              fill
-              className="object-cover group-hover:scale-105 transition-transform duration-500"
-            />
-          ) : (
-            <div className="w-full h-full flex items-center justify-center text-muted-foreground">
-              No Image
-            </div>
-          )}
-        </div>
-
-        <CardHeader className="pb-2 pt-4 px-5 space-y-0">
-          <div className="flex justify-between items-start w-full mb-2">
-            <div className="flex items-center gap-2">
-              <Avatar className="h-6 w-6 border border-slate-100">
-                <AvatarImage src={article.author?.icon_url} alt={article.author?.name} />
-                <AvatarFallback className="text-[10px]">
-                  {article.author?.name?.slice(0, 2)}
-                </AvatarFallback>
-              </Avatar>
-              <span className="text-xs font-medium text-slate-600">{article.author?.name}</span>
-            </div>
-            <span className="text-xs text-slate-400">{formatDate(article.created_at)}</span>
+    <Card
+      className="group hover:shadow-xl transition-all duration-300 border-none shadow-sm bg-white flex flex-col h-full overflow-hidden cursor-pointer"
+      onClick={handleCardClick}
+    >
+      {/* Thumbnail Image */}
+      <div className="relative w-full aspect-video overflow-hidden bg-slate-100">
+        {article.thumbnail_url ? (
+          <Image
+            src={article.thumbnail_url}
+            alt={article.title || 'Article thumbnail'}
+            fill
+            className="object-cover group-hover:scale-105 transition-transform duration-500"
+          />
+        ) : (
+          <div className="w-full h-full flex items-center justify-center text-muted-foreground">
+            No Image
           </div>
-        </CardHeader>
+        )}
+      </div>
 
-        <CardContent className="flex-grow py-0 px-5">
-          <h3 className="text-lg font-bold leading-snug mb-3 group-hover:text-primary transition-colors line-clamp-2 text-slate-800">
-            {article.title}
-          </h3>
-        </CardContent>
-
-        <CardFooter className="pt-2 pb-4 px-5 text-xs text-muted-foreground flex justify-between items-center mt-auto">
-          <Badge
-            variant="outline"
-            className="text-[10px] font-normal border-slate-200 text-slate-500"
+      <CardHeader className="pb-2 pt-4 px-5 space-y-0">
+        <div className="flex justify-between items-start w-full mb-2">
+          <Link
+            href={`/users/${article.author?.id}`}
+            className="flex items-center gap-2 hover:underline z-10"
+            onClick={(e) => e.stopPropagation()}
           >
-            {article.article_type}
-          </Badge>
-          {article.external_url && (
-            <span className="text-primary flex items-center gap-1 font-medium">External Link</span>
-          )}
-        </CardFooter>
-      </Card>
-    </Link>
+            <Avatar className="h-6 w-6 border border-slate-100">
+              <AvatarImage src={article.author?.icon_url} alt={article.author?.name} />
+              <AvatarFallback className="text-[10px]">
+                {article.author?.name?.slice(0, 2)}
+              </AvatarFallback>
+            </Avatar>
+            <span className="text-xs font-medium text-slate-600">{article.author?.name}</span>
+          </Link>
+          <span className="text-xs text-slate-400">{formatDate(article.created_at)}</span>
+        </div>
+      </CardHeader>
+
+      <CardContent className="flex-grow py-0 px-5">
+        <h3 className="text-lg font-bold leading-snug mb-3 group-hover:text-primary transition-colors line-clamp-2 text-slate-800">
+          {article.title}
+        </h3>
+      </CardContent>
+
+      <CardFooter className="pt-2 pb-4 px-5 text-xs text-muted-foreground flex justify-between items-center mt-auto">
+        {article.external_url && (
+          <span className="text-primary flex items-center gap-1 font-medium text-xs">
+            外部リンク
+          </span>
+        )}
+      </CardFooter>
+    </Card>
   );
 }

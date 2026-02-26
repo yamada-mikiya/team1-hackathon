@@ -8,6 +8,8 @@ import (
 	echoSwagger "github.com/swaggo/echo-swagger"
 	"github.com/yamada-mikiya/team1-hackathon/config"
 	"github.com/yamada-mikiya/team1-hackathon/controller"
+	"github.com/yamada-mikiya/team1-hackathon/repositories"
+	"github.com/yamada-mikiya/team1-hackathon/services"
 	"gorm.io/gorm"
 )
 
@@ -37,6 +39,11 @@ func SetupRouter(cfg *config.Config, db *gorm.DB) *echo.Echo {
 	articleController := controller.NewArticleController(db)
 	authController := controller.NewAuthController(cfg, db)
 
+	//UserControllerを作成
+	userRepo := repositories.NewUserRepository(db)
+	articleRepo := repositories.NewArticleRepository(db)
+	userService := services.NewUserService(userRepo, articleRepo)
+	userController := controller.NewUserController(userService)
 	// APIルート
 	api := router.Group("/api")
 	{
@@ -45,6 +52,7 @@ func SetupRouter(cfg *config.Config, db *gorm.DB) *echo.Echo {
 		{
 			auth.POST("/signup", authController.SignUpHandler)
 			auth.POST("/login", authController.LogInHandler)
+			auth.POST("/logout", authController.LogoutHandler)
 			// 認証必須エンドポイント
 			auth.GET("/me", authController.GetMeHandler, OptionalAuthMiddleware(cfg.SecretKey))
 		}
@@ -54,6 +62,12 @@ func SetupRouter(cfg *config.Config, db *gorm.DB) *echo.Echo {
 		{
 			articles.GET("", articleController.GetArticles)
 			articles.GET("/:slug", articleController.GetArticleBySlug)
+		}
+
+		//ユーザー関連（未認証でもアクセス可能、OptionalAuthで認証状態を取得）
+		users := api.Group("/users", OptionalAuthMiddleware(cfg.SecretKey))
+		{
+			users.GET("/:id", userController.GetUserDetailHandler)
 		}
 	}
 

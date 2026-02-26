@@ -88,6 +88,58 @@ const docTemplate = `{
                 }
             }
         },
+        "/api/articles/external": {
+            "post": {
+                "description": "外部サイト（Zenn、Noteなど）の記事URLを指定して、OGP情報を取得し記事として登録します。",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "記事 (Articles)"
+                ],
+                "summary": "外部記事を作成",
+                "parameters": [
+                    {
+                        "description": "外部記事作成リクエスト",
+                        "name": "payload",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/CreateExternalArticleRequest"
+                        }
+                    }
+                ],
+                "responses": {
+                    "201": {
+                        "description": "作成された記事",
+                        "schema": {
+                            "$ref": "#/definitions/ArticleResponse"
+                        }
+                    },
+                    "400": {
+                        "description": "リクエストが不正です",
+                        "schema": {
+                            "$ref": "#/definitions/ErrorResponse"
+                        }
+                    },
+                    "401": {
+                        "description": "認証が必要です",
+                        "schema": {
+                            "$ref": "#/definitions/ErrorResponse"
+                        }
+                    },
+                    "500": {
+                        "description": "サーバー内部でエラーが発生しました",
+                        "schema": {
+                            "$ref": "#/definitions/ErrorResponse"
+                        }
+                    }
+                }
+            }
+        },
         "/api/articles/{slug}": {
             "get": {
                 "description": "指定されたslugのブログ記事の詳細を取得します。内部公開記事の場合はログインが必要です。",
@@ -191,6 +243,55 @@ const docTemplate = `{
                 }
             }
         },
+        "/api/auth/logout": {
+            "post": {
+                "description": "クッキーを削除してログアウトします。",
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "認証 (Auth)"
+                ],
+                "summary": "ログアウト (Logout)",
+                "responses": {
+                    "200": {
+                        "description": "ログアウト成功",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        "/api/auth/me": {
+            "get": {
+                "description": "Cookieからトークンを読み取り、現在ログイン中のユーザー情報を返します。",
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "認証 (Auth)"
+                ],
+                "summary": "現在のユーザー情報を取得",
+                "responses": {
+                    "200": {
+                        "description": "ユーザー情報",
+                        "schema": {
+                            "$ref": "#/definitions/UserResponse"
+                        }
+                    },
+                    "401": {
+                        "description": "認証されていません",
+                        "schema": {
+                            "$ref": "#/definitions/ErrorResponse"
+                        }
+                    }
+                }
+            }
+        },
         "/api/auth/signup": {
             "post": {
                 "description": "新しいユーザーアカウントを作成し、認証トークンとユーザー情報を返します。",
@@ -236,6 +337,62 @@ const docTemplate = `{
                     },
                     "500": {
                         "description": "サーバー内部でエラーが発生しました",
+                        "schema": {
+                            "$ref": "#/definitions/ErrorResponse"
+                        }
+                    }
+                }
+            }
+        },
+        "/users/{id}": {
+            "get": {
+                "description": "指定されたIDのユーザー公開プロフィール（名前、所属、アイコン、記事一覧）を取得します。未認証でもアクセス可能ですが、外部公開記事のみ表示されます。",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Users"
+                ],
+                "summary": "ユーザー詳細取得",
+                "parameters": [
+                    {
+                        "type": "integer",
+                        "description": "User ID",
+                        "name": "id",
+                        "in": "path",
+                        "required": true
+                    },
+                    {
+                        "type": "string",
+                        "description": "ポートフォリオキー（内部公開記事も表示する場合に必要）",
+                        "name": "portfolio_key",
+                        "in": "query"
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/UserDetailResponse"
+                        }
+                    },
+                    "400": {
+                        "description": "Bad Request",
+                        "schema": {
+                            "$ref": "#/definitions/ErrorResponse"
+                        }
+                    },
+                    "404": {
+                        "description": "Not Found",
+                        "schema": {
+                            "$ref": "#/definitions/ErrorResponse"
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
                         "schema": {
                             "$ref": "#/definitions/ErrorResponse"
                         }
@@ -303,6 +460,10 @@ const docTemplate = `{
                     ],
                     "example": "Dev"
                 },
+                "description": {
+                    "type": "string",
+                    "example": "記事の要約や説明文です"
+                },
                 "external_url": {
                     "type": "string",
                     "example": "https://example.com/article"
@@ -323,6 +484,17 @@ const docTemplate = `{
                         "public"
                     ],
                     "example": "public"
+                },
+                "tags": {
+                    "type": "array",
+                    "items": {
+                        "type": "string"
+                    },
+                    "example": [
+                        "Go",
+                        "Backend",
+                        "Echo"
+                    ]
                 },
                 "thumbnail_url": {
                     "type": "string",
@@ -389,6 +561,38 @@ const docTemplate = `{
                 }
             }
         },
+        "CreateExternalArticleRequest": {
+            "type": "object",
+            "required": [
+                "department",
+                "status",
+                "url"
+            ],
+            "properties": {
+                "department": {
+                    "type": "string",
+                    "enum": [
+                        "開発",
+                        "マーケティング",
+                        "組織管理"
+                    ],
+                    "example": "開発"
+                },
+                "status": {
+                    "type": "string",
+                    "enum": [
+                        "draft",
+                        "internal",
+                        "public"
+                    ],
+                    "example": "public"
+                },
+                "url": {
+                    "type": "string",
+                    "example": "https://zenn.dev/example/articles/sample"
+                }
+            }
+        },
         "ErrorResponse": {
             "type": "object",
             "properties": {
@@ -410,6 +614,15 @@ const docTemplate = `{
                 "password"
             ],
             "properties": {
+                "affiliation": {
+                    "type": "string",
+                    "enum": [
+                        "開発",
+                        "マーケティング",
+                        "組織管理"
+                    ],
+                    "example": "開発"
+                },
                 "email": {
                     "type": "string",
                     "example": "user@example.com"
@@ -422,6 +635,41 @@ const docTemplate = `{
                     "type": "string",
                     "minLength": 8,
                     "example": "password123"
+                }
+            }
+        },
+        "UserDetailResponse": {
+            "type": "object",
+            "properties": {
+                "affiliation": {
+                    "type": "string",
+                    "example": "Dev"
+                },
+                "articles": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/ArticleResponse"
+                    }
+                },
+                "created_at": {
+                    "type": "string",
+                    "example": "2026-01-01T12:00:00Z"
+                },
+                "icon_url": {
+                    "type": "string",
+                    "example": "https://example.com/icon.jpg"
+                },
+                "id": {
+                    "type": "integer",
+                    "example": 1
+                },
+                "name": {
+                    "type": "string",
+                    "example": "山田太郎"
+                },
+                "portfolio_key": {
+                    "type": "string",
+                    "example": "abc123xyz"
                 }
             }
         },
